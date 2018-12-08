@@ -5,36 +5,21 @@ from pyfaidx import Fasta
 from tqdm import tqdm
 from box import Box
 
-from bokeh.plotting import figure, show, save, output_file
-from bokeh.palettes import small_palettes
+from bokeh.embed import components
 from bokeh.layouts import gridplot
 from bokeh.models import annotations
+from bokeh.palettes import small_palettes
+from bokeh.plotting import figure, show, save, output_file
 from bokeh.resources import INLINE
 
 from squiggle import transform
 
-@click.command(context_settings=dict(help_option_names=['-h', '--help']))
-@click.argument("FASTA", type=click.Path(dir_okay=False, exists=True), nargs=-1)
-@click.option("-w", "--width", default=1, type=float, help="The width of the line. Defaults to 1.")
-@click.option("-p", "--palette", type=str, default="Category10", help="Which color palette to use. Choose from bokeh.pydata.org/en/latest/docs/reference/palettes.html. Defaults to Category10.")
-@click.option("--color/--no-color", default=True, help="Whether to plot the visualizations in color.")
-@click.option('--hide/--no-hide', default=False, help="Whether to hide sequences when clicked in the legend. Defaults to false if plotting one sequence and true if plotting multiple.")
-@click.option('--bar/--no-bar', default=True, help="Whether to show a progress bar when processing multiple sequences. Defaults to true.")
-@click.option("-t", "--title", type=str, help="A title to display when plotting sequences together.")
-@click.option("--separate", is_flag=True, help="Whether to plot the visualizations separately.")
-@click.option("-c", "--cols", default=0, type=int, help="The number of columns when plotting separately. Defaults to a the closest to square layout as possible.")
-@click.option("--link-x/--no-link-x", default=True, help="Whether to link the x axes for separate plotting. Defaults to true.")
-@click.option("--link-y/--no-link-y", default=False, help="Whether to link the y axes for separate plotting. Defaults to false.")
-@click.option("-o", "--output", type=click.Path(dir_okay=False, exists=False), help="The output file for the visualization. If not provided, will open visualization in browser. The filetype must be .html")
-@click.option("--offline", is_flag=True, default=False, help="Whether to include the resources needed to plot offline when outputting to file. Defaults to false.")
-@click.option('--method', type=click.Choice(['squiggle', 'gates', "yau", "yau-bp", "randic", "qi"]), default="squiggle", help="The visualization method.")
-@click.option("-d", "--dimensions", nargs=2, type=int, metavar='WIDTH HEIGHT', help="The width and height of the plot, respectively. If not provided, will default to 750x500.")
-@click.option("--skip/--no-skip", default=False, help="Whether to skip any warnings. Defaults to false.")
-@click.option('--mode', type=click.Choice(['seq', 'file', "auto"]), default="auto", help="Whether to treat each sequence or file as the individual object. Defaults to automatic selection.")
-@click.option("--legend-loc", type=click.Choice(["top_left", "top_center", "top_right", "center_right", "bottom_right", "bottom_center", "bottom_left", "center_left", "center"]), default="top_left", help="Where to put the legend, if applicable. Defaults to top left.")
-@click.option("--output-backend", type=click.Choice(["canvas", "svg", "webgl"]), default="canvas", help="Which output backend to use while plotting. Defaults to canvas.")
-@click.option("-s", "--downsample", type=int, default=1, help="The downsampling factor. Useful for handling large sequences. Default value is 1.")
-def visualize(fasta, width, palette, color, hide, bar, title, separate, cols, link_x, link_y, output, offline, method, dimensions, skip, mode, legend_loc, output_backend, downsample):
+
+def visualize_inner(fasta, width=1, palette="Category10", color=True, hide=False, bar=True, title="Title", separate=True, cols=0,
+              link_x=True, link_y=False, output=None, offline=False, method='squiggle', dimensions=(750,500), skip=False, mode='auto',
+              legend_loc="top_left", output_backend="canvas", downsample=1, web=False
+              ):
+    print("here web: %s" % web)
     # check filetype
     if fasta is None:
         raise ValueError("Must provide FASTA file.")
@@ -244,8 +229,41 @@ def visualize(fasta, width, palette, color, hide, bar, title, separate, cols, li
     if output is not None and output.endswith(".html"):
         output_file(output, title="Squiggle Visualization" if title is not None else title)
         save(plot, resources=INLINE if offline else None)
+    elif web:
+        print("web")
+        script, div = components(plot)
+        return(script, div)
     else:
         show(plot)
+        
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
+@click.argument("FASTA", type=click.Path(dir_okay=False, exists=True), nargs=-1)
+@click.option("-w", "--width", default=1, type=float, help="The width of the line. Defaults to 1.")
+@click.option("-p", "--palette", type=str, default="Category10", help="Which color palette to use. Choose from bokeh.pydata.org/en/latest/docs/reference/palettes.html. Defaults to Category10.")
+@click.option("--color/--no-color", default=True, help="Whether to plot the visualizations in color.")
+@click.option('--hide/--no-hide', default=False, help="Whether to hide sequences when clicked in the legend. Defaults to false if plotting one sequence and true if plotting multiple.")
+@click.option('--bar/--no-bar', default=True, help="Whether to show a progress bar when processing multiple sequences. Defaults to true.")
+@click.option("-t", "--title", type=str, help="A title to display when plotting sequences together.")
+@click.option("--separate", is_flag=True, help="Whether to plot the visualizations separately.")
+@click.option("-c", "--cols", default=0, type=int, help="The number of columns when plotting separately. Defaults to a the closest to square layout as possible.")
+@click.option("--link-x/--no-link-x", default=True, help="Whether to link the x axes for separate plotting. Defaults to true.")
+@click.option("--link-y/--no-link-y", default=False, help="Whether to link the y axes for separate plotting. Defaults to false.")
+@click.option("-o", "--output", type=click.Path(dir_okay=False, exists=False), help="The output file for the visualization. If not provided, will open visualization in browser. The filetype must be .html")
+@click.option("--offline", is_flag=True, default=False, help="Whether to include the resources needed to plot offline when outputting to file. Defaults to false.")
+@click.option('--method', type=click.Choice(['squiggle', 'gates', "yau", "yau-bp", "randic", "qi"]), default="squiggle", help="The visualization method.")
+@click.option("-d", "--dimensions", nargs=2, type=int, metavar='WIDTH HEIGHT', help="The width and height of the plot, respectively. If not provided, will default to 750x500.")
+@click.option("--skip/--no-skip", default=False, help="Whether to skip any warnings. Defaults to false.")
+@click.option('--mode', type=click.Choice(['seq', 'file', "auto"]), default="auto", help="Whether to treat each sequence or file as the individual object. Defaults to automatic selection.")
+@click.option("--legend-loc", type=click.Choice(["top_left", "top_center", "top_right", "center_right", "bottom_right", "bottom_center", "bottom_left", "center_left", "center"]), default="top_left", help="Where to put the legend, if applicable. Defaults to top left.")
+@click.option("--output-backend", type=click.Choice(["canvas", "svg", "webgl"]), default="canvas", help="Which output backend to use while plotting. Defaults to canvas.")
+@click.option("-s", "--downsample", type=int, default=1, help="The downsampling factor. Useful for handling large sequences. Default value is 1.")
+@click.option("--web/--no-web", default=False, help="For use inside a web app, returns the div & script required to generate the html.")
+def visualize(fasta, width, palette, color, hide, bar, title, separate, cols,
+              link_x, link_y, output, offline, method, dimensions, skip, mode,
+              legend_loc, output_backend, downsample, web):
+        visualize_inner(fasta, width, palette, color, hide, bar, title, separate, cols,
+                        link_x, link_y, output, offline, method, dimensions, skip, mode,
+                        legend_loc, output_backend, downsample, web)
 
 
 if __name__ == '__main__':
