@@ -19,7 +19,6 @@ def visualize_inner(fasta, width=1, palette="Category10", color=True, hide=False
               link_x=True, link_y=False, output=None, offline=False, method='squiggle', dimensions=(750,500), skip=False, mode='auto',
               legend_loc="top_left", output_backend="canvas", downsample=1, web=False
               ):
-    print("here web: %s" % web)
     # check filetype
     if fasta is None:
         raise ValueError("Must provide FASTA file.")
